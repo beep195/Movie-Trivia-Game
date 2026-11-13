@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineQuest - Ultimate Movie Trivia</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Tone.js for Web Audio -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #09090b;
+            background-image: 
+                radial-gradient(circle at 20% 0%, rgba(220, 38, 38, 0.18) 0%, transparent 45%),
+                radial-gradient(circle at 80% 0%, rgba(245, 158, 11, 0.15) 0%, transparent 45%),
+                radial-gradient(circle at 50% 100%, rgba(127, 29, 29, 0.25) 0%, transparent 60%);
+            min-height: 100vh;
+            color: #f8fafc;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .font-marquee {
+            font-family: 'Cinzel', serif;
+        }
+
+        /* Marquee Border Glow */
+        .marquee-card {
+            background: linear-gradient(145deg, #18181b 0%, #0f0f12 100%);
+            border: 2px solid rgba(245, 158, 11, 0.35);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        .gold-glow {
+            text-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+        }
+
+        /* Option Buttons */
+        .option-btn {
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            background: rgba(39, 39, 42, 0.7);
+            border: 2px solid rgba(82, 82, 91, 0.5);
+        }
+
+        .option-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            background: rgba(63, 63, 70, 0.9);
+            border-color: #f59e0b;
+            box-shadow: 0 8px 20px rgba(245, 158, 11, 0.15);
+        }
+
+        .option-btn:active:not(:disabled) {
+            transform: translateY(1px);
+        }
+
+        /* Animations */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+        .animate-shake {
+            animation: shake 0.4s ease-in-out;
+        }
+
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-enter {
+            animation: fadeSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Custom scrollbar for summary breakdown */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #18181b;
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #f59e0b;
+        }
+    </style>
+</head>
+<body class="flex flex-col justify-between p-3 sm:p-6 overflow-x-hidden">
+
+    <!-- Top Theater Header -->
+    <header class="w-full max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-3 bg-zinc-900/90 backdrop-blur-md px-5 py-4 rounded-2xl border border-amber-500/30 shadow-2xl mb-5">
+        <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-red-600 to-amber-500 flex items-center justify-center shadow-lg shadow-red-900/40">
+                <i class="fa-solid fa-film text-white text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-marquee text-2xl sm:text-3xl font-black tracking-wider text-amber-400 gold-glow leading-none">
+                    CINEQUEST
+                </h1>
+                <p class="text-xs text-zinc-400 font-medium tracking-widest uppercase mt-0.5">Movie Trivia Showdown</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 sm:gap-3">
+            <!-- Genre Filter Trigger Button -->
+            <button onclick="openGenreModal()" class="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-amber-300 border border-amber-500/40 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition shadow-md">
+                <i class="fa-solid fa-clapperboard"></i>
+                <span id="header-genre-label">All Genres</span>
+                <i class="fa-solid fa-chevron-down text-xs opacity-70"></i>
+            </button>
+
+            <!-- Sound Toggle -->
+            <button id="audio-toggle-btn" onclick="toggleAudio()" aria-label="Toggle Sound" class="w-10 h-10 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 flex items-center justify-center text-amber-400 transition">
+                <i id="audio-icon" class="fa-solid fa-volume-high"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="w-full max-w-4xl mx-auto flex-1 flex flex-col justify-center">
+
+        <!-- VIEW 1: ACTIVE TRIVIA ROUND -->
+        <section id="game-view" class="w-full flex flex-col gap-5">
+            
+            <!-- Round Status & Progress Bar -->
+            <div class="marquee-card rounded-2xl p-4 sm:p-5">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <div class="flex items-center gap-3">
+                        <span class="bg-red-600/20 text-red-400 border border-red-500/30 px-3 py-1 rounded-lg text-xs sm:text-sm font-bold uppercase tracking-wider">
+                            Question <span id="q-current">1</span> of 10
+                        </span>
+                        <span id="q-genre-badge" class="bg-amber-500/15 text-amber-300 border border-amber-500/30 px-3 py-1 rounded-lg text-xs font-semibold">
+                            Action & Adventure
+                        </span>
+                    </div>
+
+                    <div class="flex items-center gap-4 text-sm font-bold">
+                        <div class="flex items-center gap-1.5 text-orange-400" title="Current Streak">
+                            <i class="fa-solid fa-fire"></i>
+                            <span id="streak-display">0</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-3 py-1 rounded-lg">
+                            <i class="fa-solid fa-trophy text-amber-400"></i>
+                            <span>Score: <span id="score-display">0</span>/10</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 10-Step Progress Bar -->
+                <div class="w-full h-2.5 bg-zinc-800 rounded-full overflow-hidden p-0.5 border border-zinc-700/70">
+                    <div id="progress-bar" class="h-full bg-gradient-to-r from-red-600 via-amber-500 to-yellow-400 rounded-full transition-all duration-500" style="width: 10%;"></div>
+                </div>
+            </div>
+
+            <!-- Question Card -->
+            <div id="question-card" class="marquee-card rounded-3xl p-6 sm:p-8 relative overflow-hidden animate-enter">
+                <!-- Decorative Spotlight Corner -->
+                <div class="absolute -top-16 -right-16 w-40 h-40 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+                <h2 id="question-text" class="text-xl sm:text-2xl md:text-3xl font-extrabold text-white leading-snug mb-6">
+                    Loading trivia question...
+                </h2>
+
+                <!-- 4 Multiple Choice Options (A, B, C, D) -->
+                <div id="options-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+                    <!-- Injected via JS -->
+                </div>
+
+                <!-- Immediate Feedback & Trivia Fact Drawer -->
+                <div id="feedback-box" class="hidden mt-6 rounded-2xl p-4 sm:p-5 border transition-all animate-enter">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <span id="feedback-icon" class="text-xl"></span>
+                                <h3 id="feedback-title" class="text-lg sm:text-xl font-black uppercase tracking-wide"></h3>
+                            </div>
+                            <p id="feedback-fact" class="text-sm sm:text-base text-zinc-200 leading-relaxed"></p>
+                        </div>
+
+                        <button id="next-btn" onclick="nextQuestion()" class="shrink-0 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-zinc-950 font-extrabold px-6 py-3.5 rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition transform hover:scale-105 active:scale-95">
+                            <span id="next-btn-text">Next Question</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- VIEW 2: ROUND SUMMARY SCREEN -->
+        <section id="summary-view" class="hidden w-full marquee-card rounded-3xl p-6 sm:p-10 text-center animate-enter">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-amber-400 to-red-600 p-1 mb-4 shadow-xl shadow-amber-500/20">
+                <div class="w-full h-full bg-zinc-950 rounded-full flex items-center justify-center">
+                    <i id="rank-icon" class="fa-solid fa-award text-4xl text-amber-400"></i>
+                </div>
+            </div>
+
+            <p class="text-xs sm:text-sm font-bold uppercase tracking-widest text-amber-400 mb-1">Round Complete • <span id="summary-genre-tag">All Genres</span></p>
+            <h2 id="rank-title" class="font-marquee text-3xl sm:text-5xl font-black text-white gold-glow mb-2">
+                Oscar Winner
+            </h2>
+            <p id="rank-subtitle" class="text-zinc-400 text-sm sm:text-base max-w-md mx-auto mb-6">
+                An extraordinary performance worthy of a standing ovation!
+            </p>
+
+            <!-- Big Score Pill -->
+            <div class="inline-flex items-center gap-6 bg-zinc-900/90 border border-amber-500/30 px-8 py-4 rounded-2xl mb-8">
+                <div>
+                    <div class="text-xs uppercase tracking-wider text-zinc-400 font-semibold">Final Score</div>
+                    <div class="text-4xl sm:text-5xl font-black text-amber-400"><span id="final-score">8</span><span class="text-2xl text-zinc-500">/10</span></div>
+                </div>
+                <div class="h-10 w-px bg-zinc-700"></div>
+                <div>
+                    <div class="text-xs uppercase tracking-wider text-zinc-400 font-semibold">Best Streak</div>
+                    <div class="text-4xl sm:text-5xl font-black text-orange-400"><span id="final-streak">5</span></div>
+                </div>
+            </div>
+
+            <!-- Round Breakdown List -->
+            <div class="text-left max-w-2xl mx-auto mb-8">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-zinc-400 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-amber-400"></i> Round Breakdown
+                </h3>
+                <div id="breakdown-list" class="max-h-64 overflow-y-auto space-y-2.5 pr-1">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Summary Action Buttons -->
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <button onclick="startNewRound()" class="w-full sm:w-auto bg-gradient-to-r from-red-600 to-amber-500 hover:from-red-500 hover:to-amber-400 text-white font-extrabold px-8 py-4 rounded-2xl shadow-lg shadow-red-900/40 flex items-center justify-center gap-2.5 transition transform hover:scale-105">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>Play Another Round</span>
+                </button>
+                <button onclick="openGenreModal()" class="w-full sm:w-auto bg-zinc-800 hover:bg-zinc-700 text-amber-300 border border-amber-500/40 font-bold px-8 py-4 rounded-2xl flex items-center justify-center gap-2.5 transition">
+                    <i class="fa-solid fa-clapperboard"></i>
+                    <span>Change Genre</span>
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full max-w-4xl mx-auto text-center mt-6 text-xs text-zinc-500">
+        Select a genre anytime via the top menu • 90+ curated questions across cinema history
+    </footer>
+
+    <!-- GENRE FILTER MODAL -->
+    <div id="genre-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="marquee-card rounded-3xl p-6 sm:p-8 max-w-2xl w-full animate-enter relative">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="font-marquee text-2xl sm:text-3xl font-black text-amber-400 flex items-center gap-3">
+                    <i class="fa-solid fa-ticket text-red-500"></i> Select Movie Genre
+                </h2>
+                <button onclick="closeGenreModal()" class="w-9 h-9 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center text-xl">
+                    &times;
+                </button>
+            </div>
+            <p class="text-sm text-zinc-400 mb-6">Choose a category to filter your 10-question trivia round. Switching genres starts a fresh round.</p>
+
+            <div id="genre-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                <!-- Populated by JS -->
+            </div>
+
+            <div class="flex justify-end">
+                <button onclick="closeGenreModal()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold px-5 py-2.5 rounded-xl text-sm transition">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. MOVIE TRIVIA QUESTION BANK (90 QUESTIONS)
+        // 15+ unique questions per genre across 6 genres
+        // ==========================================
+        const QUESTION_BANK = [
+            // --- ACTION & ADVENTURE (15) ---
+            {
+                genre: "Action & Adventure",
+                q: "In 'Mad Max: Fury Road', what is the name of Imperator Furiosa's heavily armored rig?",
+                options: ["The War Rig", "The Interceptor", "The Doof Wagon", "The Gigahorse"],
+                answer: 0,
+                fact: "George Miller built multiple functional War Rigs for practical stunt filming in the Namibian desert."
+            },
+            {
+                genre: "Action & Adventure",
+                q: "Which actor performed his own HALO skydive jump from 25,000 feet for 'Mission: Impossible – Fallout'?",
+                options: ["Daniel Craig", "Tom Cruise", "Keanu Reeves", "Matt Damon"],
+                answer: 1,
+                fact: "Tom Cruise completed over 100 practice jumps with a custom oxygen helmet to capture the sunset shot."
+            },
+            {
+                genre: "Action & Adventure",
+                q: "In 'Raiders of the Lost Ark', what is Indiana Jones famously terrified of?",
+                options: ["Spiders", "Heights", "Snakes", "Bats"],
+                answer: 2,
+                fact: "Over 7,000 live snakes were brought onto the set for the Well of Souls sequence."
+            },
+            {
+                genre: "Action & Adventure",
+                q: "What triggers John Wick's return to the assassin underworld in the 2014 original film?",
+                options: ["A stolen briefcase", "The theft of his Mustang and death of his puppy", "A bounty on his mentor", "A betrayal by the Continental"],
+                answer: 1,
+                fact: "The puppy, Daisy, was a final posthumous gift from John Wick's late wife Helen."
+            },
+            {
+                genre: "Action & Adventure",
+                q: "In 'Die Hard' (1988), what is the name of the Los Angeles skyscraper where terrorists take hostages?",
+                options: ["Nakatomi Plaza", "Weyland Tower", "Cyberdyne Building", "Tyrell Pyramid"],
+                answer: 0,
+                fact: "Filming took place inside Fox Plaza in Century City while the building was still under construction."
+            },
+            {
+                genre: "Action & Adventure",
+                q: "Which 2022 sequel features Pete 'Maverick' Mitchell training a new detachment of Top Gun graduates?",
+                options: ["Top Gun: Mach 10", "Top Gun: Maverick", "Top Gun: Legacy", "Top Gun: Dagger"],
+                answer: 1,
+                fact: "Actors underwent three months of intense G-force flight training to film inside real F/A-18 Super Hornets."
+            },
+            {
+                genre: "Action & Adventure",
+                q: "In 'The Dark Knight', what iconic vehicle does Batman eject from after it is damaged by the Joker?",
+                options: ["The Batwing", "The Tumbler", "The Batboat", "The Whirly-Bat"],
+                answer: 1,
+                fact: "When the Tumbler self-destructs, its front wheels transform into the agile Batpod motorcycle."
+            },
+            {
+                genre: "Action & Adventure",
+                q: "In 'Gladiator' (2000), what was Maximus Decimus Meridius's rank before being betrayed?",
+                options: ["Praetorian Prefect", "General of the Felix Legions", "Senator of Rome", "Centurion of Gaul"],
+                answer: 1,
+                fact: "Russell Crowe delivered the famous line 'Are you not entertained?' after defeating gladiators in Zucchabar."
+            },
+            {
+                genre: "Action & Adventure",
+                q: "Which martial arts legend starred as Lee in the 1973 classic 'Enter the Dragon'?",
+                options: ["Jackie Chan", "Bruce Lee", "Jet Li", "Donnie Yen"],
+                answer: 1,
+                fact: "A young Jackie Chan actually appears briefly as a henchman whose neck Bruce Lee snaps in a fight scene."
+            },
+            {
+                genre: "Action & Adventure",
+                q: "In 'Jurassic Park' (1993), why do the park's security systems temporarily shut down?",
+                options: ["A lightning strike", "Dennis Nedry sabotages them to steal dinosaur embryos", "A T-Rex breaks the main generator", "An earthquake"],
+                answer: 1,
+                fact: "Nedry hid the stolen embryos inside a modified Barbasol shaving cream canister."
+            },
+            {
+                genre: "Action & Adventure",
+                q: "What is the name of Jack Sparrow's beloved ship in 'Pirates of the Caribbean'?",
+                options: ["The Flying Dutchman", "The Black Pearl", "The Queen Anne's Revenge", "The Interceptor"],
+                answer: 1,
+                fact: "Originally named the Wicked Wench, the ship was raised from the depths by Davy Jones for Jack Sparrow."
+            },
+            {
+                genre: "Action & Adventure",
+                q: "In 'Casino Royale' (2006), what high-stakes card game does James Bond play against Le Chiffre?",
+                options: ["Baccarat", "Texas Hold'em Poker", "Blackjack", "Five-Card Draw"],
+                answer: 1,
+                fact: "In Ian Fleming's original 1953 novel, the game was Chemin de Fer (baccarat), updated to poker for modern audiences."
+            },
+            {
+                genre: "Action & Adventure",
+                q: "Which 2024 blockbuster sequel saw Paul Mescal enter the Colosseum as Lucius Verus?",
+                options: ["Troy II", "Gladiator II", "300: Empire", "Spartacus: Arena"],
+                answer: 1,
+                fact: "Ridley Scott returned to direct Gladiator II 24 years after the original Best Picture winner."
+            },
+            {
+                genre: "Action & Adventure",
+                q: "In 'Speed' (1994), what happens if the city bus drops below 50 miles per hour?",
+                options: ["The brakes lock permanently", "A bomb on board will detonate", "The doors seal shut", "Police snipers open fire"],
+                answer: 1,
+                fact: "Eleven different GMC buses were used during production, including two rigged specifically for the highway gap jump."
+            },
+            {
+                genre: "Action & Adventure",
+                q: "Who directs the epic 'John Wick' franchise alongside uncredited co-director David Leitch on the first film?",
+                options: ["Chad Stahelski", "Gareth Evans", "Christopher McQuarrie", "Justin Lin"],
+                answer: 0,
+                fact: "Chad Stahelski was previously Keanu Reeves's stunt double on 'The Matrix' trilogy."
+            },
+
+            // --- SCI-FI & FANTASY (15) ---
+            {
+                genre: "Sci-Fi & Fantasy",
+                q: "In 'Dune' (2021) and 'Dune: Part Two' (2024), what is the precious spice harvested on Arrakis called?",
+                options: ["Melange", "Vibranium", "Unobtanium", "Kyber"],
+                answer: 0,
+                fact: "Melange extends human life, grants heightened awareness, and makes interstellar navigation possible."
+            },
+            {
+                genre: "Sci-Fi & Fantasy",
+                q: "What pill does Neo take in 'The Matrix' (1999) to learn the truth about reality?",
+                options: ["The Blue Pill", "The Red Pill", "The Green Pill", "The Silver Pill"],
+                answer: 1,
+                fact: "Morpheus offers Neo the red pill to wake up from the simulated reality created by machines."
+            },
+            {
+                genre: "Sci-Fi & Fantasy",
+                q: "In 'Star Wars: The Empire Strikes Back', what does Han Solo reply when Leia says 'I love you'?",
+                options: ["I love you too", "I know", "May the Force be with you", "Don't get cocky"],
+                answer: 1,
+                fact: "Harrison Ford improvised the iconic line 'I know' during filming after discussing the moment with director Irvin Kershner."
+            },
+            {
+                genre: "Sci-Fi & Fantasy",
+                q: "In 'The Lord of the Rings', where must the One Ring be destroyed?",
+                options: ["Helm's Deep", "Mount Doom", "Minas Tirith", "Rivendell"],
+                answer: 1,
+                fact: "Forged by Sauron in the fires of Orodruin (Mount Doom), only its volcanic heat could unmake the Ring."
+            },
+            {
+                genre: "Sci-Fi & Fantasy",
+                q: "In 'Interstellar' (2014), how many years pass on Earth for every hour spent on Miller's water planet?",
+                options: ["1 year", "7 years", "23 years", "50 years"],
+                answer: 1,
+                fact: "Physicist Kip Thorne consulted on the film to ensure the gravitational time dilation near black hole Gargantua was accurate."
+            },
+            {
+                genre: "Sci-Fi & Fantasy",
+                q: "What speed must the DeLorean reach to travel through time in 'Back to the Future'?",
+                options: ["77 mph", "88 mph", "99 mph", "100 mph"],
+                answer: 1,
+                fact: "The filmmakers chose 88 mph because it looked memorable on a digital speedometer and was easy to remember."
+            },
+            {
+                genre: "Sci-Fi & Fantasy",
+                q: "In 'Blade Runner' (1982), what test is used to distinguish replicants from humans?",
+                options: ["The Turing Test", "The Voight-Kampff Test", "The Gom Jabbar", "The Rorschach Protocol"],
+                answer: 1,
+                fact: "The Voight-Kampff machine measures involuntary pupil dilation and emotional empathy responses."
+            },
+            {
+                genre: "Sci-Fi & Fantasy",
+                q: "In 'Inception' (2010), what object does Dom Cobb use as his personal totem?",
+                options: ["A loaded die", "A spinning top", "A weighted chess piece", "A two-headed coin"],
+                answer: 1,
+                fact: "The top originally belonged to Cobb's wife Mal; if it never stops spinning, he knows he is still in a dream."
+            },
+            {
+                genre: "Sci-Fi & Fantasy",
+                q: "Which alien language does linguist Louise Banks decipher in Denis Villeneuve's 'Arrival' (2016)?",
+                options: ["Klingon", "Heptapod", "Na'vi", "Huttese"],
+                answer: 1,
+                fact: "The circular ink-blot logograms of Heptapod B were designed by artist Martine Bertrand."
+            },
+            {
+                genre: "Sci-Fi & Fantasy",
+                q: "In 'Harry Potter and the Prisoner of Azkaban', what creature is Buckbeak?",
+                options: ["A Thestral", "A Hippogriff", "A Basilisk", "A Griffin"],
+                answer: 1,
+                fact: "Hippogriffs are proud creatures that require respectful bowing before approaching."
+            },
+            {
+                genre: "Sci-Fi & Fantasy",
+                q: "What is the name of the rogue AI computer aboard the Discovery One in '2001: A Space Odyssey'?",
+                options: ["Mother", "HAL 9000", "Skynet", "VIKI"],
+                answer: 1,
+                fact: "HAL stands for Heuristically Programmed Algorithmic Computer, voiced calmly by Douglas Rain."
+            },
+            {
+                genre: "Sci-Fi & Fantasy",
+                q: "In 'Avatar' (2009), what is the name of the lush habitable moon inhabited by the Na'vi?",
+                options: ["Endor", "Pandora", "LV-426", "Titan"],
+                answer: 1,
+                fact: "Pandora orbits the fictional gas giant Polyphemus in the Alpha Centauri star system."
+            },
+            {
+                genre: "Sci-Fi & Fantasy",
+                q: "In 'Everything Everywhere All at Once' (2022), what bizarre object threatens to destroy the multiverse?",
+                options: ["An Everything Bagel", "A Cosmic Rubik's Cube", "A Golden Spoon", "A Singing Trophy"],
+                answer: 0,
+                fact: "Jobu Tupaki placed everything in existence onto an everything bagel, creating a nihilistic black hole."
+            },
+            {
+                genre: "Sci-Fi & Fantasy",
+                q: "In 'Terminator 2: Judgment Day', what liquid metal alloy is the T-1000 made of?",
+                options: ["Adamantium", "Mimetic polyalloy", "Mithril", "Carbonadium"],
+                answer: 1,
+                fact: "ILM's groundbreaking CGI for the T-1000 took 35 animators 10 months to render just 5 minutes of screen time."
+            },
+            {
+                genre: "Sci-Fi & Fantasy",
+                q: "In 'The Fifth Element' (1997), who plays the mysterious orange-haired Supreme Being Leeloo?",
+                options: ["Milla Jovovich", "Natalie Portman", "Uma Thurman", "Charlize Theron"],
+                answer: 0,
+                fact: "Director Luc Besson invented a 400-word 'Divine Language' that he and Milla Jovovich used to write letters to each other."
+            },
+
+            // --- COMEDY (15) ---
+            {
+                genre: "Comedy",
+                q: "In 'Mean Girls' (2004), what color do The Plastics wear every Wednesday?",
+                options: ["Purple", "Pink", "Yellow", "Red"],
+                answer: 1,
+                fact: "Karen Smith famously informs Cady Heron: 'On Wednesdays we wear pink.'"
+            },
+            {
+                genre: "Comedy",
+                q: "In 'Superbad' (2007), what single name appears on Fogell's infamous fake ID?",
+                options: ["McLovin", "McAwesome", "Mr. Fabulous", "Jimmy Hendrix"],
+                answer: 0,
+                fact: "The fake Hawaii driver's license listed McLovin's birthday as June 3, 1981, making him 25 years old."
+            },
+            {
+                genre: "Comedy",
+                q: "In 'Anchorman: The Legend of Ron Burgundy', what San Diego TV station does Ron work for?",
+                options: ["Channel 4 News", "Channel 9 Action News", "Channel 2 Eyewitness", "Channel 7 Globe"],
+                answer: 0,
+                fact: "Will Ferrell and Adam McKay originally pitched a version where the news team's plane crashes into a mountain of orangutans."
+            },
+            {
+                genre: "Comedy",
+                q: "What item of furniture 'really tied the room together' in 'The Big Lebowski' (1998)?",
+                options: ["A leather recliner", "A rug", "A lava lamp", "A bowling trophy case"],
+                answer: 1,
+                fact: "The Dude's quest to replace his ruined rug spirals into a bizarre kidnapping ransom plot."
+            },
+            {
+                genre: "Comedy",
+                q: "In 'Monty Python and the Holy Grail', how do King Arthur and his knights simulate riding horses?",
+                options: ["Banging coconut shells together", "Hopping on broomsticks", "Skipping in rhythm", "Playing kazoos"],
+                answer: 0,
+                fact: "The coconut gag was born out of necessity because the low-budget production couldn't afford real horses."
+            },
+            {
+                genre: "Comedy",
+                q: "In 'The Hangover' (2009), which celebrity's pet tiger do the guys find in their Las Vegas bathroom?",
+                options: ["Nicolas Cage", "Mike Tyson", "Charlie Sheen", "Elton John"],
+                answer: 1,
+                fact: "Mike Tyson agreed to cameo in the film largely because he was a huge fan of director Todd Phillips's 'Old School'."
+            },
+            {
+                genre: "Comedy",
+                q: "In 'Ferris Bueller's Day Off' (1986), what rare vintage car does Ferris borrow from Cameron's dad?",
+                options: ["1961 Ferrari 250 GT California Spyder", "1965 Aston Martin DB5", "1967 Shelby Mustang GT500", "1957 Corvette"],
+                answer: 0,
+                fact: "Because authentic 1961 Ferrari 250 GTs were worth over $300,000 even in 1986, three fiberglass replicas were built for filming."
+            },
+            {
+                genre: "Comedy",
+                q: "In 'Barbie' (2023), what is Ken's self-proclaimed official job title?",
+                options: ["Lifeguard", "Beach", "Surf Instructor", "Rollerblader"],
+                answer: 1,
+                fact: "Ryan Gosling's power ballad 'I'm Just Ken' was nominated for Best Original Song at the 96th Academy Awards."
+            },
+            {
+                genre: "Comedy",
+                q: "In 'Groundhog Day' (1993), what Pennsylvania town is weatherman Phil Connors trapped repeating a day in?",
+                options: ["Scranton", "Punxsutawney", "Gettysburg", "Hershey"],
+                answer: 1,
+                fact: "Although set in Punxsutawney, PA, the movie was actually filmed in Woodstock, Illinois."
+            },
+            {
+                genre: "Comedy",
+                q: "In 'Bridesmaids' (2011), where are the bridesmaids flying when Annie suffers a mid-air meltdown?",
+                options: ["Miami", "Las Vegas", "Cabo San Lucas", "New York"],
+                answer: 1,
+                fact: "Melissa McCarthy received an Academy Award nomination for Best Supporting Actress for her scene-stealing role as Megan."
+            },
+            {
+                genre: "Comedy",
+                q: "In 'The Princess Bride' (1987), what word does Vizzini keep repeating that Inigo Montoya questions?",
+                options: ["Unbelievable", "Inconceivable", "Impossible", "Ridiculous"],
+                answer: 1,
+                fact: "Inigo famously replies: 'You keep using that word. I do not think it means what you think it means.'"
+            },
+            {
+                genre: "Comedy",
+                q: "In 'Elf' (2003), what are the four main food groups according to Buddy the Elf?",
+                options: ["Candy, candy canes, candy corns, and syrup", "Cookies, cocoa, gingerbread, and fudge", "Sugar, frosting, sprinkles, and marshmallows", "Maple syrup, waffles, chocolate, and eggnog"],
+                answer: 0,
+                fact: "Will Ferrell actually ate spaghetti topped with maple syrup, M&Ms, and Pop-Tarts during filming."
+            },
+            {
+                genre: "Comedy",
+                q: "In 'Step Brothers' (2008), what makeshift construction project collapses in Brennan and Dale's bedroom?",
+                options: ["A treehouse", "Bunk beds", "A recording booth", "A wrestling ring"],
+                answer: 1,
+                fact: "They built the bunk beds to have 'so much room for activities!' before they immediately crashed down."
+            },
+            {
+                genre: "Comedy",
+                q: "In 'Airplane!' (1980), what classic response follows 'Surely you can't be serious'?",
+                options: ["I am serious, and don't call me Shirley", "I'm completely serious, Captain", "Dead serious, Roger", "Stop joking around, Shirley"],
+                answer: 0,
+                fact: "Leslie Nielsen was cast specifically because he had previously only played serious dramatic roles."
+            },
+            {
+                genre: "Comedy",
+                q: "In '21 Jump Street' (2012), which two actors star as undercover police officers Schmidt and Jenko?",
+                options: ["Seth Rogen & James Franco", "Jonah Hill & Channing Tatum", "Will Ferrell & Mark Wahlberg", "Paul Rudd & Jason Segel"],
+                answer: 1,
+                fact: "Johnny Depp, who starred in the original 1987 TV series, made a surprise cameo in the film."
+            },
+
+            // --- HORROR & THRILLER (15) ---
+            {
+                genre: "Horror & Thriller",
+                q: "In 'The Silence of the Lambs' (1991), what does Hannibal Lecter say he ate a census taker's liver with?",
+                options: ["Fava beans and a nice Chianti", "Truffles and a Merlot", "Garlic butter and Pinot Noir", "Wild mushrooms and Burgundy"],
+                answer: 0,
+                fact: "Anthony Hopkins won Best Actor despite appearing on screen for just over 16 minutes."
+            },
+            {
+                genre: "Horror & Thriller",
+                q: "In 'Get Out' (2017), what household object does Missy Armitage use to hypnotize Chris into the Sunken Place?",
+                options: ["A pocket watch", "A silver spoon and teacup", "A metronome", "A brass bell"],
+                answer: 1,
+                fact: "Jordan Peele won the Academy Award for Best Original Screenplay, the first Black writer to win in that category."
+            },
+            {
+                genre: "Horror & Thriller",
+                q: "In 'The Shining' (1980), what is the name of the isolated Colorado resort where Jack Torrance works as winter caretaker?",
+                options: ["The Timberline Lodge", "The Overlook Hotel", "The Bates Motel", "The Stanley Inn"],
+                answer: 1,
+                fact: "Stephen King was inspired to write the novel after staying in Room 217 at The Stanley Hotel in Estes Park."
+            },
+            {
+                genre: "Horror & Thriller",
+                q: "In 'A Quiet Place' (2018), how do the blind extraterrestrial monsters hunt their human prey?",
+                options: ["By body heat", "By ultra-sensitive hearing", "By scent", "By ground vibrations only"],
+                answer: 1,
+                fact: "Deaf actress Millicent Simmonds helped teach the cast American Sign Language for authentic communication."
+            },
+            {
+                genre: "Horror & Thriller",
+                q: "What is the name of the killer's iconic mask in the 'Scream' franchise?",
+                options: ["Leatherface", "Ghostface", "The Shape", "Jigsaw"],
+                answer: 1,
+                fact: "The Ghostface mask was inspired by Edvard Munch's famous painting 'The Scream' and discovered in a house during location scouting."
+            },
+            {
+                genre: "Horror & Thriller",
+                q: "In 'Alien' (1979), what is the name of the commercial towing starship crewed by Ripley and Dallas?",
+                options: ["Sulaco", "Nostromo", "Prometheus", "Covenant"],
+                answer: 1,
+                fact: "Ridley Scott named the ship Nostromo after the 1904 novel by Joseph Conrad."
+            },
+            {
+                genre: "Horror & Thriller",
+                q: "In 'Jaws' (1975), what was the mechanical shark nicknamed by Steven Spielberg and his crew?",
+                options: ["Chomper", "Bruce", "Finley", "Rex"],
+                answer: 1,
+                fact: "Spielberg named the constantly malfunctioning mechanical shark 'Bruce' after his lawyer, Bruce Ramer."
+            },
+            {
+                genre: "Horror & Thriller",
+                q: "In 'Parasite' (2019), what type of tutoring job does Ki-woo first take at the wealthy Park family's house?",
+                options: ["Art therapy", "English tutor", "Math tutor", "Piano instructor"],
+                answer: 1,
+                fact: "Bong Joon-ho's 'Parasite' made history as the first non-English language film to win Best Picture at the Oscars."
+            },
+            {
+                genre: "Horror & Thriller",
+                q: "In 'Se7en' (1995), what theme connects all of serial killer John Doe's murders?",
+                options: ["The Zodiac signs", "The Seven Deadly Sins", "The Ten Plagues", "Dante's Nine Circles"],
+                answer: 1,
+                fact: "Kevin Spacey's name was left off all opening credits and promotional posters to preserve the surprise of his appearance."
+            },
+            {
+                genre: "Horror & Thriller",
+                q: "In 'The Sixth Sense' (1999), what color repeatedly signals the presence of ghosts throughout the film?",
+                options: ["Blue", "Red", "Yellow", "Green"],
+                answer: 1,
+                fact: "Director M. Night Shyamalan intentionally used red items—like a doorknob, sweater, or balloon—to hint at the supernatural."
+            },
+            {
+                genre: "Horror & Thriller",
+                q: "In 'Psycho' (1960), what is the name of the creepy taxidermy-loving proprietor of the Bates Motel?",
+                options: ["Norman Bates", "Patrick Bateman", "Jack Torrance", "Hannibal Lecter"],
+                answer: 0,
+                fact: "Alfred Hitchcock bought up copies of the novel so audiences wouldn't spoil the shocking mid-movie twist."
+            },
+            {
+                genre: "Horror & Thriller",
+                q: "In 'The Thing' (1982), where is the American research station located?",
+                options: ["Siberia", "Antarctica", "Greenland", "Alaska"],
+                answer: 1,
+                fact: "Rob Bottin created the groundbreaking practical creature effects at just 22 years old."
+            },
+            {
+                genre: "Horror & Thriller",
+                q: "In 'Halloween' (1978), what mask was modified and painted white to create Michael Myers's look?",
+                options: ["A William Shatner (Captain Kirk) mask", "A Richard Nixon mask", "A clown mask", "A mannequin face"],
+                answer: 0,
+                fact: "Production designer Tommy Lee Wallace bought a $2 Captain Kirk mask, widened the eye holes, and spray-painted it white."
+            },
+            {
+                genre: "Horror & Thriller",
+                q: "In 'Hereditary' (2018), what miniature craft hobby does Toni Collette's character Annie pursue?",
+                options: ["Glassblowing", "Building detailed dioramas", "Origami sculptures", "Dollhouse porcelain"],
+                answer: 1,
+                fact: "Annie's intricate miniatures mirror the tragic events unfolding in her own family home."
+            },
+            {
+                genre: "Horror & Thriller",
+                q: "In 'It' (2017), what shape-shifting clown terrorizes the children of Derry, Maine?",
+                options: ["Art the Clown", "Pennywise", "Twisty", "Captain Spaulding"],
+                answer: 1,
+                fact: "Bill Skarsgård could naturally point his eyes in two different directions, avoiding the need for CGI eye effects."
+            },
+
+            // --- ANIMATION & FAMILY (15) ---
+            {
+                genre: "Animation & Family",
+                q: "In 'Toy Story' (1995), what is the name of the boy who owns Woody and Buzz Lightyear?",
+                options: ["Sid", "Andy", "Billy", "Tommy"],
+                answer: 1,
+                fact: "'Toy Story' was the world's first entirely computer-animated feature film."
+            },
+            {
+                genre: "Animation & Family",
+                q: "In 'Spirited Away' (2001), what kind of creatures are Chihiro's parents transformed into after eating spirit food?",
+                options: ["Frogs", "Pigs", "Ravens", "Otters"],
+                answer: 1,
+                fact: "Hayao Miyazaki's masterpiece remains the only hand-drawn non-English animated film to win an Academy Award."
+            },
+            {
+                genre: "Animation & Family",
+                q: "In 'Spider-Man: Into the Spider-Verse' (2018), who is the Brooklyn teenager bitten by a radioactive spider?",
+                options: ["Peter Parker", "Miles Morales", "Miguel O'Hara", "Hobie Brown"],
+                answer: 1,
+                fact: "The film animated characters at 'twos' (12 frames per second) to give it a tactile comic-book feel."
+            },
+            {
+                genre: "Animation & Family",
+                q: "In 'Finding Nemo' (2003), what address is written on the diver's goggles that Dory and Marlin follow?",
+                options: ["P. Sherman, 42 Wallaby Way, Sydney", "123 Coral Reef Blvd, Melbourne", "88 Harbour Bridge Rd, Perth", "10 Ocean Avenue, Brisbane"],
+                answer: 0,
+                fact: "Pixar named the fictional dentist after production designer Philip Sherman."
+            },
+            {
+                genre: "Animation & Family",
+                q: "In 'The Lion King' (1994), what does 'Hakuna Matata' mean according to Timon and Pumbaa?",
+                options: ["King of the Jungle", "No worries", "Circle of Life", "Forever friends"],
+                answer: 1,
+                fact: "'Hakuna matata' is a real Swahili phrase translating directly to 'there are no troubles'."
+            },
+            {
+                genre: "Animation & Family",
+                q: "In 'Frozen' (2013), what is the name of the cheerful snowman who loves warm hugs and summer?",
+                options: ["Sven", "Olaf", "Kristoff", "Marshmallow"],
+                answer: 1,
+                fact: "Josh Gad improvised many of Olaf's funniest lines during recording sessions."
+            },
+            {
+                genre: "Animation & Family",
+                q: "In 'Ratatouille' (2007), what is the name of the aspiring chef rat in Paris?",
+                options: ["Emile", "Remy", "Linguini", "Gusteau"],
+                answer: 1,
+                fact: "Pixar animators attended French cooking classes and worked in top kitchens to accurately animate food preparation."
+            },
+            {
+                genre: "Animation & Family",
+                q: "In 'Inside Out 2' (2024), which bright orange new emotion takes over Riley's headquarters?",
+                options: ["Envy", "Anxiety", "Ennui", "Embarrassment"],
+                answer: 1,
+                fact: "Voiced by Maya Hawke, Anxiety became the centerpiece of the 2024 blockbuster sequel."
+            },
+            {
+                genre: "Animation & Family",
+                q: "In 'Coco' (2017), what musical instrument does Miguel dream of playing despite his family's ban?",
+                options: ["Trumpet", "Guitar", "Violin", "Accordion"],
+                answer: 1,
+                fact: "Animators recorded real classical guitarists so Miguel's finger placements on the frets matched every note."
+            },
+            {
+                genre: "Animation & Family",
+                q: "In 'How to Train Your Dragon' (2010), what rare species of dragon is Toothless?",
+                options: ["Deadly Nadder", "Night Fury", "Monstrous Nightmare", "Gronckle"],
+                answer: 1,
+                fact: "Toothless's movements and facial expressions were modeled after a mix of black panthers, dogs, and salamanders."
+            },
+            {
+                genre: "Animation & Family",
+                q: "In 'Shrek' (2001), what fairytale creature refuses to give up the location of the other characters?",
+                options: ["Pinocchio", "Gingy (The Gingerbread Man)", "The Big Bad Wolf", "Puss in Boots"],
+                answer: 1,
+                fact: "Gingy's defiant 'Not my gumdrop buttons!' scene became one of the film's most quoted moments."
+            },
+            {
+                genre: "Animation & Family",
+                q: "In 'Up' (2009), where does Carl Fredricksen tie thousands of balloons to fly his house?",
+                options: ["Angel Falls", "Paradise Falls", "Victoria Falls", "Niagara Falls"],
+                answer: 1,
+                fact: "Paradise Falls was modeled directly on Venezuela's tepui tabletop mountains and Angel Falls."
+            },
+            {
+                genre: "Animation & Family",
+                q: "In 'The Incredibles' (2004), why does fashion designer Edna Mode strictly forbid capes on superhero suits?",
+                options: ["They are out of fashion", "They get caught in jet turbines, missiles, and elevators", "They are too heavy to fly with", "They ruin posture"],
+                answer: 1,
+                fact: "Writer-director Brad Bird voiced Edna Mode himself after his temporary scratch track proved irreplaceable."
+            },
+            {
+                genre: "Animation & Family",
+                q: "In 'WALL-E' (2008), what plant does WALL-E discover inside an old refrigerator that sparks EVE's mission?",
+                options: ["A sunflower", "A small green seedling", "A red rose", "A cactus"],
+                answer: 1,
+                fact: "There is almost no spoken dialogue in the first 39 minutes of WALL-E, relying on visual storytelling and Ben Burtt's sound design."
+            },
+            {
+                genre: "Animation & Family",
+                q: "In 'The Wild Robot' (2024), what is the designation of the shipwrecked robot who adopts an orphaned gosling?",
+                options: ["ROZZUM unit 7134 (Roz)", "WALL-E 402", "BAYMAX 2.0", "ATLAS 9"],
+                answer: 0,
+                fact: "Lupita Nyong'o voiced Roz in DreamWorks' acclaimed adaptation of Peter Brown's illustrated novel."
+            },
+
+            // --- DRAMA & CLASSICS (15) ---
+            {
+                genre: "Drama & Classics",
+                q: "In 'The Godfather' (1972), what famous line does Don Vito Corleone say about negotiating?",
+                options: ["Keep your friends close, enemies closer", "I'm gonna make him an offer he can't refuse", "Leave the gun, take the cannoli", "It's strictly business"],
+                answer: 1,
+                fact: "Marlon Brando wore weighted mouthpieces during auditions to give Vito Corleone his iconic bulldog jaw."
+            },
+            {
+                genre: "Drama & Classics",
+                q: "In 'The Shawshank Redemption' (1994), what poster hides the escape tunnel in Andy Dufresne's cell?",
+                options: ["Marilyn Monroe", "Raquel Welch", "Audrey Hepburn", "Grace Kelly"],
+                answer: 1,
+                fact: "Across the decades in the film, Andy's posters change from Rita Hayworth to Marilyn Monroe, and finally Raquel Welch."
+            },
+            {
+                genre: "Drama & Classics",
+                q: "In 'Casablanca' (1942), what song does Sam play at Rick's Café Américain that upsets Rick?",
+                options: ["La Vie en Rose", "As Time Goes By", "Over the Rainbow", "Moon River"],
+                answer: 1,
+                fact: "Humphrey Bogart never actually says 'Play it again, Sam'—Ingrid Bergman says 'Play it once, Sam, for old times' sake.'"
+            },
+            {
+                genre: "Drama & Classics",
+                q: "In 'Citizen Kane' (1941), what is Charles Foster Kane's dying single word?",
+                options: ["Xanadu", "Rosebud", "Mother", "Bernstein"],
+                answer: 1,
+                fact: "Orson Welles co-wrote, directed, produced, and starred in Citizen Kane at just 25 years old."
+            },
+            {
+                genre: "Drama & Classics",
+                q: "In 'Oppenheimer' (2023), what is the code name for the first nuclear weapon detonation test in New Mexico?",
+                options: ["Manhattan", "Trinity", "Gadget", "Los Alamos"],
+                answer: 1,
+                fact: "Christopher Nolan recreated the Trinity explosion using practical pyrotechnics rather than CGI."
+            },
+            {
+                genre: "Drama & Classics",
+                q: "In 'Forrest Gump' (1994), what does Forrest's mama always say life is like?",
+                options: ["A long winding road", "A box of chocolates", "A feather in the wind", "A game of ping-pong"],
+                answer: 1,
+                fact: "Tom Hanks's younger brother Jim Hanks stood in as his running double for many of the cross-country jogging scenes."
+            },
+            {
+                genre: "Drama & Classics",
+                q: "In 'Pulp Fiction' (1994), what is a Quarter Pounder with Cheese called in Paris according to Vincent Vega?",
+                options: ["Le Big Mac", "Royale with Cheese", "Parisian Burger", "Fromage Royal"],
+                answer: 1,
+                fact: "Because France uses the metric system, they don't know what a 'Quarter Pounder' is."
+            },
+            {
+                genre: "Drama & Classics",
+                q: "In 'Good Will Hunting' (1997), what university does Will Hunting work at as a janitor?",
+                options: ["Harvard University", "MIT", "Boston University", "Yale University"],
+                answer: 1,
+                fact: "Matt Damon and Ben Affleck won the Oscar for Best Original Screenplay for the script they began writing in college."
+            },
+            {
+                genre: "Drama & Classics",
+                q: "In 'Titanic' (1997), what is the name of the rare blue diamond necklace Rose wears in Jack's sketch?",
+                options: ["The Star of India", "The Heart of the Ocean", "The Hope Diamond", "The Blue Empress"],
+                answer: 1,
+                fact: "James Cameron sketched the drawing of Rose himself; the hands seen drawing in the film are Cameron's."
+            },
+            {
+                genre: "Drama & Classics",
+                q: "In '12 Angry Men' (1957), which juror is the lone initial vote for 'Not Guilty'?",
+                options: ["Juror #3", "Juror #8", "Juror #1", "Juror #10"],
+                answer: 1,
+                fact: "Played by Henry Fonda, Juror #8 argues that a teenager's life deserves at least a brief discussion before conviction."
+            },
+            {
+                genre: "Drama & Classics",
+                q: "In 'Schindler's List' (1993), what single splash of color appears in the black-and-white film?",
+                options: ["A yellow star", "A little girl's red coat", "A blue ribbon", "A green candle"],
+                answer: 1,
+                fact: "Steven Spielberg used the red coat to symbolize how the world leaders saw the tragedy clearly yet failed to intervene."
+            },
+            {
+                genre: "Drama & Classics",
+                q: "In 'Whiplash' (2014), what instrument does Andrew Neiman play under ruthless instructor Terence Fletcher?",
+                options: ["Trumpet", "Jazz drums", "Saxophone", "Double bass"],
+                answer: 1,
+                fact: "Miles Teller actually played the drums himself, practicing so intensely that his hands bled onto the drumsticks."
+            },
+            {
+                genre: "Drama & Classics",
+                q: "In 'The Wizard of Oz' (1939), what color were Dorothy's slippers in L. Frank Baum's original book before MGM changed them for Technicolor?",
+                options: ["Gold", "Silver", "Emerald Green", "Blue"],
+                answer: 1,
+                fact: "Studio executives changed them from silver to ruby red to show off the vibrant new three-strip Technicolor process."
+            },
+            {
+                genre: "Drama & Classics",
+                q: "In 'The Social Network' (2010), how much did Eduardo Saverin initially invest to help launch TheFacebook?",
+                options: ["$1,000", "$19,000", "$50,000", "$100,000"],
+                answer: 1,
+                fact: "Aaron Sorkin's fast-paced script was 162 pages long—nearly 40 pages longer than a standard two-hour screenplay."
+            },
+            {
+                genre: "Drama & Classics",
+                q: "In 'Dead Poets Society' (1989), what Latin phrase does teacher John Keating urge his students to embrace?",
+                options: ["Veni, vidi, vici", "Carpe diem", "Memento mori", "Ad astra"],
+                answer: 1,
+                fact: "Robin Williams improvised many of his classroom impressions, including John Wayne performing Shakespeare."
+            }
+        ];
+
+        const GENRES = [
+            { id: "All Genres", label: "All Genres", icon: "fa-film", desc: "90 questions spanning every cinema style" },
+            { id: "Action & Adventure", label: "Action & Adventure", icon: "fa-fire-flame-curved", desc: "Explosive stunts, spies, and epic quests" },
+            { id: "Sci-Fi & Fantasy", label: "Sci-Fi & Fantasy", icon: "fa-rocket", desc: "Space odysseys, time travel, and magic" },
+            { id: "Comedy", label: "Comedy", icon: "fa-face-laugh-squint", desc: "Cult classics, slapstick, and sharp wit" },
+            { id: "Horror & Thriller", label: "Horror & Thriller", icon: "fa-ghost", desc: "Suspense, chills, and iconic monsters" },
+            { id: "Animation & Family", label: "Animation & Family", icon: "fa-wand-magic-sparkles", desc: "Pixar, Ghibli, and beloved adventures" },
+            { id: "Drama & Classics", label: "Drama & Classics", icon: "fa-award", desc: "Oscar winners and timeless masterpieces" }
+        ];
+
+        // ==========================================
+        // 2. GAME STATE
+        // ==========================================
+        let selectedGenre = "All Genres";
+        let roundQuestions = [];
+        let currentIndex = 0;
+        let roundScore = 0;
+        let currentStreak = 0;
+        let bestRoundStreak = 0;
+        let hasAnsweredCurrent = false;
+        let roundHistory = [];
+        let recentlyAskedTexts = new Set();
+
+        // Audio state
+        let audioEnabled = true;
+        let synth = null;
+
+        function initAudio() {
+            if (!synth && typeof Tone !== 'undefined') {
+                synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                synth.volume.value = -6;
+            }
+        }
+
+        function playSound(type) {
+            if (!audioEnabled) return;
+            try {
+                initAudio();
+                if (Tone.context.state !== 'running') {
+                    Tone.start();
+                }
+                const now = Tone.now();
+                if (type === 'correct') {
+                    synth.triggerAttackRelease(["C5", "E5"], "16n", now);
+                    synth.triggerAttackRelease(["G5", "C6"], "8n", now + 0.12);
+                } else if (type === 'wrong') {
+                    synth.triggerAttackRelease(["F3", "Ab3"], "8n", now);
+                    synth.triggerAttackRelease(["D3", "F3"], "4n", now + 0.16);
+                } else if (type === 'click') {
+                    synth.triggerAttackRelease("A4", "32n", now);
+                } else if (type === 'fanfare') {
+                    synth.triggerAttackRelease("C5", "16n", now);
+                    synth.triggerAttackRelease("E5", "16n", now + 0.1);
+                    synth.triggerAttackRelease("G5", "16n", now + 0.2);
+                    synth.triggerAttackRelease(["C5", "E5", "G5", "C6"], "2n", now + 0.32);
+                }
+            } catch (err) {
+                // Ignore audio block before user gesture
+            }
+        }
+
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            const icon = document.getElementById('audio-icon');
+            icon.className = audioEnabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark text-zinc-500';
+            if (audioEnabled) playSound('click');
+        }
+
+        // ==========================================
+        // 3. ROUND & QUESTION MANAGEMENT
+        // ==========================================
+        function shuffleArray(arr) {
+            const copy = [...arr];
+            for (let i = copy.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copy[i], copy[j]] = [copy[j], copy[i]];
+            }
+            return copy;
+        }
+
+        function startNewRound() {
+            playSound('click');
+
+            // Filter pool by selected genre
+            let pool = selectedGenre === "All Genres"
+                ? QUESTION_BANK
+                : QUESTION_BANK.filter(item => item.genre === selectedGenre);
+
+            // Prefer questions not seen in the immediately preceding round
+            let freshPool = pool.filter(item => !recentlyAskedTexts.has(item.q));
+            if (freshPool.length < 10) {
+                recentlyAskedTexts.clear();
+                freshPool = pool;
+            }
+
+            roundQuestions = shuffleArray(freshPool).slice(0, 10);
+            roundQuestions.forEach(item => recentlyAskedTexts.add(item.q));
+
+            // Reset round stats
+            currentIndex = 0;
+            roundScore = 0;
+            currentStreak = 0;
+            bestRoundStreak = 0;
+            roundHistory = [];
+
+            // Switch Views
+            document.getElementById('summary-view').classList.add('hidden');
+            document.getElementById('game-view').classList.remove('hidden');
+
+            updateScoreboardUI();
+            renderQuestion();
+        }
+
+        function updateScoreboardUI() {
+            document.getElementById('q-current').innerText = currentIndex + 1;
+            document.getElementById('score-display').innerText = roundScore;
+            document.getElementById('streak-display').innerText = currentStreak;
+            document.getElementById('header-genre-label').innerText = selectedGenre;
+
+            const pct = ((currentIndex + 1) / 10) * 100;
+            document.getElementById('progress-bar').style.width = `${pct}%`;
+        }
+
+        function renderQuestion() {
+            hasAnsweredCurrent = false;
+            const currentQ = roundQuestions[currentIndex];
+
+            updateScoreboardUI();
+
+            // Re-trigger subtle entrance animation
+            const card = document.getElementById('question-card');
+            card.classList.remove('animate-enter', 'animate-shake');
+            void card.offsetWidth;
+            card.classList.add('animate-enter');
+
+            document.getElementById('q-genre-badge').innerText = currentQ.genre;
+            document.getElementById('question-text').innerText = currentQ.q;
+
+            // Hide feedback drawer
+            const feedbackBox = document.getElementById('feedback-box');
+            feedbackBox.classList.add('hidden');
+
+            // Render A, B, C, D options
+            const letters = ['A', 'B', 'C', 'D'];
+            const grid = document.getElementById('options-grid');
+            grid.innerHTML = '';
+
+            currentQ.options.forEach((optText, idx) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.id = `opt-btn-${idx}`;
+                btn.className = 'option-btn w-full text-left p-4 sm:p-5 rounded-2xl flex items-center gap-3.5 cursor-pointer group';
+                btn.onclick = () => handleAnswerSelect(idx);
+
+                btn.innerHTML = `
+                    <span id="opt-badge-${idx}" class="w-9 h-9 shrink-0 rounded-xl bg-zinc-800 border border-zinc-600 group-hover:border-amber-400 group-hover:text-amber-400 flex items-center justify-center font-black text-sm text-zinc-300 transition">
+                        ${letters[idx]}
+                    </span>
+                    <span class="font-semibold text-base sm:text-lg text-zinc-100 leading-snug">${optText}</span>
+                `;
+                grid.appendChild(btn);
+            });
+        }
+
+        function handleAnswerSelect(chosenIdx) {
+            if (hasAnsweredCurrent) return;
+            hasAnsweredCurrent = true;
+
+            const currentQ = roundQuestions[currentIndex];
+            const isCorrect = chosenIdx === currentQ.answer;
+
+            // Disable all buttons and apply right/wrong highlights
+            for (let i = 0; i < 4; i++) {
+                const btn = document.getElementById(`opt-btn-${i}`);
+                const badge = document.getElementById(`opt-badge-${i}`);
+                btn.disabled = true;
+
+                if (i === currentQ.answer) {
+                    // Highlight correct answer in emerald green
+                    btn.className = 'w-full text-left p-4 sm:p-5 rounded-2xl flex items-center gap-3.5 bg-emerald-950/90 border-2 border-emerald-400 shadow-lg shadow-emerald-950/50 transition';
+                    badge.className = 'w-9 h-9 shrink-0 rounded-xl bg-emerald-500 text-zinc-950 flex items-center justify-center font-black text-sm';
+                    badge.innerHTML = '<i class="fa-solid fa-check"></i>';
+                } else if (i === chosenIdx && !isCorrect) {
+                    // Highlight chosen wrong answer in crimson red
+                    btn.className = 'w-full text-left p-4 sm:p-5 rounded-2xl flex items-center gap-3.5 bg-red-950/90 border-2 border-red-500 shadow-lg shadow-red-950/50 transition';
+                    badge.className = 'w-9 h-9 shrink-0 rounded-xl bg-red-500 text-white flex items-center justify-center font-black text-sm';
+                    badge.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+                } else {
+                    btn.classList.add('opacity-45');
+                }
+            }
+
+            // Update score, streak, sound, and feedback banner
+            const feedbackBox = document.getElementById('feedback-box');
+            const feedbackIcon = document.getElementById('feedback-icon');
+            const feedbackTitle = document.getElementById('feedback-title');
+            const feedbackFact = document.getElementById('feedback-fact');
+            const nextBtnText = document.getElementById('next-btn-text');
+
+            if (isCorrect) {
+                roundScore++;
+                currentStreak++;
+                if (currentStreak > bestRoundStreak) bestRoundStreak = currentStreak;
+                playSound('correct');
+
+                feedbackBox.className = 'mt-6 rounded-2xl p-4 sm:p-5 border-2 border-emerald-500/50 bg-emerald-950/50 animate-enter';
+                feedbackIcon.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i>';
+                feedbackTitle.className = 'text-lg sm:text-xl font-black uppercase tracking-wide text-emerald-400';
+                feedbackTitle.innerText = 'Correct!';
+            } else {
+                currentStreak = 0;
+                playSound('wrong');
+
+                const card = document.getElementById('question-card');
+                card.classList.remove('animate-shake');
+                void card.offsetWidth;
+                card.classList.add('animate-shake');
+
+                feedbackBox.className = 'mt-6 rounded-2xl p-4 sm:p-5 border-2 border-red-500/50 bg-red-950/50 animate-enter';
+                feedbackIcon.innerHTML = '<i class="fa-solid fa-circle-xmark text-red-400"></i>';
+                feedbackTitle.className = 'text-lg sm:text-xl font-black uppercase tracking-wide text-red-400';
+                feedbackTitle.innerText = `Wrong! Answer: ${currentQ.options[currentQ.answer]}`;
+            }
+
+            feedbackFact.innerText = currentQ.fact;
+            nextBtnText.innerText = currentIndex === 9 ? 'See Final Score' : 'Next Question';
+            feedbackBox.classList.remove('hidden');
+
+            // Update score pill immediately
+            document.getElementById('score-display').innerText = roundScore;
+            document.getElementById('streak-display').innerText = currentStreak;
+
+            // Record for summary screen
+            roundHistory.push({
+                question: currentQ.q,
+                userAnswer: currentQ.options[chosenIdx],
+                correctAnswer: currentQ.options[currentQ.answer],
+                isCorrect: isCorrect
+            });
+        }
+
+        function nextQuestion() {
+            playSound('click');
+            if (currentIndex < 9) {
+                currentIndex++;
+                renderQuestion();
+            } else {
+                showRoundSummary();
+            }
+        }
+
+        // ==========================================
+        // 4. ROUND SUMMARY SCREEN
+        // ==========================================
+        function showRoundSummary() {
+            document.getElementById('game-view').classList.add('hidden');
+            const summaryView = document.getElementById('summary-view');
+            summaryView.classList.remove('hidden');
+
+            document.getElementById('summary-genre-tag').innerText = selectedGenre;
+            document.getElementById('final-score').innerText = roundScore;
+            document.getElementById('final-streak').innerText = bestRoundStreak;
+
+            // Determine Cinematic Rank Title
+            let rank = {};
+            if (roundScore >= 9) {
+                rank = {
+                    title: "Oscar Winner",
+                    subtitle: "A legendary performance! Hollywood's Walk of Fame awaits you.",
+                    icon: "fa-trophy"
+                };
+            } else if (roundScore >= 7) {
+                rank = {
+                    title: "Blockbuster Director",
+                    subtitle: "Box-office smash! You know your cinema inside and out.",
+                    icon: "fa-clapperboard"
+                };
+            } else if (roundScore >= 4) {
+                rank = {
+                    title: "Indie Film Buff",
+                    subtitle: "Solid movie instincts with plenty of great trivia knowledge.",
+                    icon: "fa-film"
+                };
+            } else {
+                rank = {
+                    title: "Popcorn Rookie",
+                    subtitle: "Grab a fresh bucket of popcorn and queue up a movie marathon!",
+                    icon: "fa-ticket"
+                };
+            }
+
+            document.getElementById('rank-title').innerText = rank.title;
+            document.getElementById('rank-subtitle').innerText = rank.subtitle;
+            document.getElementById('rank-icon').className = `fa-solid ${rank.icon} text-4xl text-amber-400`;
+
+            // Populate Breakdown List
+            const list = document.getElementById('breakdown-list');
+            list.innerHTML = '';
+            roundHistory.forEach((item, idx) => {
+                const row = document.createElement('div');
+                row.className = `p-3.5 rounded-xl border flex items-start gap-3 ${
+                    item.isCorrect 
+                    ? 'bg-emerald-950/30 border-emerald-500/30' 
+                    : 'bg-red-950/30 border-red-500/30'
+                }`;
+
+                row.innerHTML = `
+                    <div class="mt-0.5 shrink-0">
+                        ${item.isCorrect 
+                            ? '<i class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>' 
+                            : '<i class="fa-solid fa-circle-xmark text-red-400 text-lg"></i>'}
+                    </div>
+                    <div class="text-sm flex-1">
+                        <p class="font-semibold text-zinc-200 mb-1"><span class="text-zinc-500 mr-1">${idx + 1}.</span>${item.question}</p>
+                        ${item.isCorrect 
+                            ? `<p class="text-emerald-400 text-xs font-medium">Answered: ${item.correctAnswer}</p>`
+                            : `<p class="text-red-400 text-xs font-medium">Your answer: ${item.userAnswer} <span class="text-zinc-400">•</span> <span class="text-emerald-400">Correct: ${item.correctAnswer}</span></p>`
+                        }
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+
+            // Celebrate good rounds with confetti & fanfare
+            if (roundScore >= 7) {
+                playSound('fanfare');
+                confetti({
+                    particleCount: 90,
+                    spread: 75,
+                    origin: { y: 0.6 },
+                    colors: ['#f59e0b', '#ef4444', '#fde047', '#ffffff']
+                });
+            }
+        }
+
+        // ==========================================
+        // 5. GENRE FILTER MODAL
+        // ==========================================
+        function openGenreModal() {
+            playSound('click');
+            const grid = document.getElementById('genre-grid');
+            grid.innerHTML = '';
+
+            GENRES.forEach(g => {
+                const isSelected = selectedGenre === g.id;
+                const count = g.id === "All Genres" 
+                    ? QUESTION_BANK.length 
+                    : QUESTION_BANK.filter(q => q.genre === g.id).length;
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `p-4 rounded-2xl border-2 text-left transition flex items-start gap-3.5 ${
+                    isSelected 
+                    ? 'bg-amber-500/15 border-amber-400 shadow-lg shadow-amber-500/10' 
+                    : 'bg-zinc-900/80 border-zinc-700/80 hover:border-amber-500/50 hover:bg-zinc-800/80'
+                }`;
+
+                btn.onclick = () => {
+                    selectedGenre = g.id;
+                    closeGenreModal();
+                    startNewRound();
+                };
+
+                btn.innerHTML = `
+                    <div class="w-10 h-10 rounded-xl ${isSelected ? 'bg-amber-400 text-zinc-950' : 'bg-zinc-800 text-amber-400'} flex items-center justify-center shrink-0 mt-0.5">
+                        <i class="fa-solid ${g.icon} text-lg"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="font-bold text-base ${isSelected ? 'text-amber-300' : 'text-white'}">${g.label}</span>
+                            <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-400">${count} Qs</span>
+                        </div>
+                        <p class="text-xs text-zinc-400 mt-1">${g.desc}</p>
+                    </div>
+                `;
+                grid.appendChild(btn);
+            });
+
+            document.getElementById('genre-modal').classList.remove('hidden');
+        }
+
+        function closeGenreModal() {
+            document.getElementById('genre-modal').classList.add('hidden');
+        }
+
+        // Start first round on window load
+        window.onload = function() {
+            startNewRound();
+        };
+    </script>
+</body>
+</html>
